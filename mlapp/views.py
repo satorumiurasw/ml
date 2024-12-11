@@ -1,10 +1,11 @@
 from django.shortcuts import render, redirect
-from .forms import InputForm, LoginForm
+from .forms import InputForm, LoginForm, SignUpForm
 import joblib
 import numpy as np
 from .models import Customer
 from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import login, authenticate
 
 
 loaded_model = joblib.load('model/ml_model.pkl')
@@ -45,6 +46,11 @@ def result(request):
 
 @login_required
 def history(request):
+    if request.method == 'POST':
+        d_id = request.POST
+        d_customer = Customer.objects.filter(id=d_id['d_id'])
+        d_customer.delete()
+
     customers = Customer.objects.all()
     return render(request, 'mlapp/history.html', {'customers':customers})
 
@@ -54,3 +60,19 @@ class Login(LoginView):
 
 class Logout(LogoutView):
     template_name = 'mlapp/base.html'
+
+def signup(request):
+    if request.method == 'POST':
+        form = SignUpForm(request.POST)
+        if form.is_valid():
+            form.save()
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password1')
+            new_user = authenticate(username=username, password=password)
+            if new_user is not None:
+                login(request, new_user)
+                return redirect('index')
+    else:
+        form = SignUpForm()
+        return render(request, 'mlapp/signup.html', {'form':form})
+    
